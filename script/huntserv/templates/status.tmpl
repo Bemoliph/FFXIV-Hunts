@@ -1,0 +1,93 @@
+{% extends "index.tmpl" %}
+{% block head %}
+	{{ super() }}
+	<script language="javascript" type="text/javascript" src="/js/flot/jquery.min.js"></script>
+	<script language="javascript" type="text/javascript" src="/js/flot/jquery.flot.min.js"></script>
+	<script language="javascript" type="text/javascript" src="/js/flot/jquery.flot.stack.min.js"></script>
+	<script language="javascript" type="text/javascript" src="/js/flot/jquery.flot.time.min.js"></script>
+	<script language="javascript" type="text/javascript" src="/js/flot/jquery.flot.crosshair.min.js"></script>
+	
+	<script type="text/javascript">
+		$(function() {
+			plot = $.plot("#graph", {{ graphData }}, {
+				series: {
+					stack: true,
+					lines: {
+						show: false,
+						fill: true,
+						steps: true
+					},
+					bars: {
+						barWidth:1000 * 60 * 5,
+						show: true,
+						align:"left",
+						lineWidth:0,
+						fill: 0.8
+					}
+				},
+				xaxis: {
+					mode: "time",
+					timezone: "browser"
+				},
+				yaxis: {
+					min: 0,
+					tickDecimals: 0
+				},
+				grid: {
+					hoverable: true
+				},
+				crosshair: {
+					mode: "x"
+				}
+			});
+			
+		var legends = $("#graph .legendLabel");
+		var updateLegendTimeout = null;
+		var latestPosition = null;
+
+		function updateLegend() {
+
+			updateLegendTimeout = null;
+
+			var pos = latestPosition;
+
+			var axes = plot.getAxes();
+			if (pos.x < axes.xaxis.min || pos.x > axes.xaxis.max ||
+				pos.y < axes.yaxis.min || pos.y > axes.yaxis.max) {
+				return;
+			}
+
+			var i, j, dataset = plot.getData();
+			for (i = 0; i < dataset.length; ++i) {
+
+				var series = dataset[i];
+
+				// Find the nearest points, x-wise
+
+				for (j = 0; j < series.data.length; ++j) {
+					if (series.data[j][0] > pos.x) {
+						var y = series.data[j][1];
+						legends.eq(i).text(series.label.replace(/:.*/, ": " + y));
+						break;
+					}
+				}
+			}
+		}
+
+		$("#graph").bind("plothover",  function (event, pos, item) {
+			latestPosition = pos;
+			if (!updateLegendTimeout) {
+				updateLegendTimeout = setTimeout(updateLegend, 50);
+			}
+		});
+		});
+	</script>
+{% endblock %}
+{% block content %}
+<div class="base content">
+	<div class="graph-container">
+		<div id="graph" class="graph"></div>
+	</div>
+	<div id="tooltip"></div>
+</div>
+{% endblock %}
