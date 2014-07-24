@@ -139,7 +139,7 @@ class HuntApi(object):
 		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 		
 		# Get most recent monster sightings
-		dbCursor.execute("""SELECT DISTINCT ON (t.targetID) t.targetID, t.targetName, r.rankName, z.zoneName, t.minSpawnTime, extract(epoch from s.datetime) AS lastSeen, s.isDead FROM hunts.targets AS t JOIN hunts.ranks AS r ON t.rankID = r.rankID JOIN hunts.zones AS z ON t.zoneID = z.zoneID JOIN hunts.sightings AS s on t.targetID = s.targetID ORDER BY t.targetID, s.datetime DESC;""")
+		dbCursor.execute("""SELECT DISTINCT ON (t.targetID) t.targetID, t.targetName, r.rankName, z.zoneName, extract(epoch from t.minSpawnTime) as minSpawnTime, extract(epoch from s.datetime) AS lastSeen, s.isDead FROM hunts.targets AS t JOIN hunts.ranks AS r ON t.rankID = r.rankID JOIN hunts.zones AS z ON t.zoneID = z.zoneID JOIN hunts.sightings AS s on t.targetID = s.targetID ORDER BY t.targetID, s.datetime DESC;""")
 		targets = [dict(x) for x in dbCursor.fetchall()]
 		
 		dbCursor.close()
@@ -153,7 +153,7 @@ class HuntServ(object):
 		dbConn = pool.getconn()
 		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 		
-		# Get most recent monster sightings
+		# Get list of targets
 		dbCursor.execute("""SELECT t.targetID, t.targetName FROM hunts.targets AS t ORDER BY t.targetName ASC;""")
 		targetList = [dict(x) for x in dbCursor.fetchall()]
 		
