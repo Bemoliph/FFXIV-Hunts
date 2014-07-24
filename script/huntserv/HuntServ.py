@@ -91,7 +91,8 @@ class HuntApi(object):
 		if nearestTimedelta is None:
 			# Target has never been reported before, not a duplicate report
 			return False
-		elif nearestTimedelta[0] < datetime.timedelta(minutes = 10):
+		#elif nearestTimedelta[0] < datetime.timedelta(minutes = 10):
+		elif abs(nearestTimedelta[0].total_seconds()) < datetime.timedelta(minutes = 10).total_seconds():
 			# Consider it a duplicate if reported in the last 10 minutes
 			return True
 		else:
