@@ -26,39 +26,21 @@ class HuntApi(object):
 		# TODO: API docs
 		return ""
 	
-	def getTargetData(self, params):
-		targetData = {}
-		
-		try:
-			targetData["targetID"] = int(params.get("targetID", None))
-		except ValueError:
-			targetData["targetID"] = None
-		
-		try:
-			targetData["xCoord"] = int(params.get("xCoord", None))
-		except ValueError:
-			targetData["targetID"] = None
-		
-		try:
-			targetData["yCoord"] = int(params.get("yCoord", None))
-		except ValueError:
-			targetData["targetID"] = None
-		
-		targetData["datetime"] = datetime.datetime.now()
-		targetData["password"] = params.get("password", None)
-		
-		return targetData
-	
 	def isValidTargetData(self, targetData):
 		if type(targetData) is not dict:
 			return False
 		
-		# TODO: remove
-		if targetData["password"] != "1ObVxHAN":
+		# TODO: Implement proper authentication, sessions and/or API keys
+		password = targetData.get("password")
+		if password != "***REMOVED***":
 			return False
 		
+		seconds = targetData.get("time", None)
+		if seconds is not None:
+			targetData["time"] = datetime.datetime.fromtimestamp(seconds)
+		
 		# Make sure we have all the data we need
-		requiredKeysAndTypes = [("targetID", int), ("xCoord", int), ("yCoord", int), ("datetime", datetime.datetime)]
+		requiredKeysAndTypes = [("targetID", int), ("xCoord", int), ("yCoord", int), ("isDead", bool), ("isNow", bool), ("time", datetime.datetime)]
 		for key, valueType in requiredKeysAndTypes:
 			if key not in targetData or type(targetData[key]) is not valueType:
 				return False
@@ -69,14 +51,17 @@ class HuntApi(object):
 		xCoord = targetData["xCoord"]
 		yCoord = targetData["yCoord"]
 		
-		if (xCoord < 0 or xCoord > 41) or (yCoord < 0 or yCoord > 41):
+		if (xCoord < minCoord or xCoord > maxCoord) or (yCoord < minCoord or yCoord > maxCoord):
+			return False
+		
+		if targetData["isDead"] is None:
 			return False
 		
 		# Make sure target exists
 		dbConn = pool.getconn()
 		dbCursor = dbConn.cursor()
 		
-		dbCursor.execute("""SELECT count(1) FROM hunts.sightings WHERE hunts.sightings.targetID = %s""", (targetData["targetID"],))
+		dbCursor.execute("""SELECT count(1) FROM hunts.sightings WHERE hunts.sightings.targetID = %s;""", (targetData["targetID"],))
 		targetExists = dbCursor.fetchone()
 		
 		dbCursor.close()
@@ -88,20 +73,26 @@ class HuntApi(object):
 		return True
 	
 	def isDuplicateSighting(self, targetData):
-		# Duplicate as defined by already reported in the last five minutes
 		dbConn = pool.getconn()
 		dbCursor = dbConn.cursor()
 		
-		dbCursor.execute("""SELECT age(datetime) as lastDatetime FROM hunts.sightings WHERE targetID = %s ORDER BY datetime DESC LIMIT 1""", (targetData["targetID"],))
-		lastDatetime = dbCursor.fetchone()
+		if targetData["isDead"]:
+			# Get time since last killed report
+			dbCursor.execute("""SELECT age(datetime, %s) FROM hunts.sightings WHERE targetID = %s AND isDead ORDER BY age(datetime, %s) DESC LIMIT 1;""", (targetData["time"], targetData["targetID"], targetData["time"]))
+		else:
+			# Get time since last sighted report
+			dbCursor.execute("""SELECT age(datetime, %s) FROM hunts.sightings WHERE targetID = %s AND NOT isDead ORDER BY age(datetime, %s) DESC LIMIT 1;""", (targetData["time"], targetData["targetID"], targetData["time"]))
+		
+		nearestTimedelta = dbCursor.fetchone()
 		
 		dbCursor.close()
 		pool.putconn(dbConn)
 		
-		if lastDatetime is None:
+		if nearestTimedelta is None:
 			# Target has never been reported before, not a duplicate report
 			return False
-		elif lastDatetime[0] < datetime.timedelta(minutes = 5):
+		elif nearestTimedelta[0] < datetime.timedelta(minutes = 10):
+			# Consider it a duplicate if reported in the last 10 minutes
 			return True
 		else:
 			return False
@@ -112,37 +103,34 @@ class HuntApi(object):
 		
 		#submitterIP = cherrypy.request.headers['HTTP_X_FORWARDED_FOR']
 		submitterIP = cherrypy.request.remote.ip
-		rowData = (targetData["datetime"], targetData["targetID"], targetData["xCoord"], targetData["yCoord"], submitterIP)
-		dbCursor.execute("""INSERT INTO hunts.sightings VALUES (%s)""" % ", ".join(("%s",)*len(rowData)), rowData)
+		
+		rowData = (targetData["time"], targetData["isDead"], targetData["targetID"], targetData["xCoord"], targetData["yCoord"], submitterIP)
+		dbCursor.execute("""INSERT INTO hunts.sightings VALUES (%s);""" % ", ".join(("%s",)*len(rowData)), rowData)
 		
 		dbConn.commit()
 		dbCursor.close()
 		pool.putconn(dbConn)
 	
-	def crunchSightingStats(self, targetData):
+	def crunchSightingStatistics(self, targetData):
 		# TODO: regenerate stats for reported monster
 		pass
 	
 	@cherrypy.expose
-	#@cherrypy.tools.json_in()
-	#@cherrypy.tools.json_out()
+	@cherrypy.tools.json_in()
+	@cherrypy.tools.json_out()
 	def updateTarget(self, **params):
-		#targetData = cherrypy.request.json
-		targetData = self.getTargetData(params)
+		targetData = cherrypy.request.json
 		
 		if not self.isValidTargetData(targetData):
-			raise cherrypy.HTTPRedirect("/")
-			#return {"success":False, w"message":"Invalid input."}
+			return {"success":False, "message":"Invalid input."}
 		
 		if self.isDuplicateSighting(targetData):
-			raise cherrypy.HTTPRedirect("/")
-			#return {"success":False, "message":"Duplicate sighting."}
+			return {"success":False, "message":"Duplicate sighting."}
 		
 		self.addSighting(targetData)
-		self.crunchSightingStats(targetData)
+		self.crunchSightingStatistics(targetData)
 		
-		#return {"success":True, "message":"Sighting added."}
-		raise cherrypy.HTTPRedirect("/")
+		return {"success":True, "message":"Sighting added."}
 	
 	@cherrypy.expose
 	@cherrypy.tools.json_out()
@@ -151,7 +139,7 @@ class HuntApi(object):
 		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 		
 		# Get most recent monster sightings
-		dbCursor.execute("""SELECT DISTINCT ON (t.targetID) t.targetID, t.targetName, r.rankName, z.zoneName, extract(epoch from s.datetime)*1000 AS lastSeen FROM hunts.targets AS t JOIN hunts.ranks AS r ON t.rankID = r.rankID JOIN hunts.zones AS z ON t.zoneID = z.zoneID JOIN hunts.sightings AS s on t.targetID = s.targetID ORDER BY t.targetID, s.datetime DESC;""")
+		dbCursor.execute("""SELECT DISTINCT ON (t.targetID) t.targetID, t.targetName, r.rankName, z.zoneName, t.minSpawnTime, extract(epoch from s.datetime) AS lastSeen, s.isDead FROM hunts.targets AS t JOIN hunts.ranks AS r ON t.rankID = r.rankID JOIN hunts.zones AS z ON t.zoneID = z.zoneID JOIN hunts.sightings AS s on t.targetID = s.targetID ORDER BY t.targetID, s.datetime DESC;""")
 		targets = [dict(x) for x in dbCursor.fetchall()]
 		
 		dbCursor.close()
