@@ -36,9 +36,12 @@ class HuntApi(object):
 		if password != "***REMOVED***":
 			return False
 		
-		seconds = targetData.get("time", None)
-		if seconds is not None:
-			targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
+		if targetData["isNow"]:
+			targetData["time"] = datetime.datetime.now()
+		else:
+			seconds = targetData.get("time", None)
+			if seconds is not None:
+				targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
 		
 		# Make sure we have all the data we need
 		# TODO: Find a more graceful way of including None and/or multiple types
