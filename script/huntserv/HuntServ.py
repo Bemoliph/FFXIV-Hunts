@@ -41,18 +41,23 @@ class HuntApi(object):
 			targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
 		
 		# Make sure we have all the data we need
-		requiredKeysAndTypes = [("targetID", int), ("xCoord", int), ("yCoord", int), ("isDead", bool), ("isNow", bool), ("time", datetime.datetime)]
-		for key, valueType in requiredKeysAndTypes:
-			if key not in targetData or type(targetData[key]) is not valueType:
+		# TODO: Find a more graceful way of including None and/or multiple types
+		requiredKeysAndTypes = [("targetID", [int,]), ("xCoord", [int, type(None)]), ("yCoord", [int, type(None)]), ("isDead", [bool,]), ("isNow", [bool,]), ("time", [datetime.datetime,])]
+		for key, valueTypes in requiredKeysAndTypes:
+			if key not in targetData or type(targetData[key]) not in valueTypes:
 				return False
 		
 		# Verify map coordinates are within valid constraints
+		
 		minCoord = 0
 		maxCoord = 41
 		xCoord = targetData["xCoord"]
 		yCoord = targetData["yCoord"]
 		
-		if (xCoord < minCoord or xCoord > maxCoord) or (yCoord < minCoord or yCoord > maxCoord):
+		if xCoord is not None and (xCoord < minCoord or xCoord > maxCoord):
+			return False
+		
+		if yCoord is not None and (yCoord < minCoord or yCoord > maxCoord):
 			return False
 		
 		if targetData["isDead"] is None:
