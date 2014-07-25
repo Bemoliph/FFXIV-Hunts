@@ -115,7 +115,7 @@ if __name__ == "__main__":
 	dbCursor.execute("""INSERT INTO hunts.targets VALUES (%s, %s, %s, %s, %s);""", (50, 16, 0, "Leech King", None))
 	
 	
-	dbCursor.execute("""CREATE TABLE hunts.sightings (datetime timestamptz, isDead boolean, targetID integer REFERENCES hunts.targets(targetID), xCoord integer, yCoord integer, submitterIP inet);""")
+	dbCursor.execute("""CREATE TABLE hunts.sightings (datetime timestamp, isDead boolean, targetID integer REFERENCES hunts.targets(targetID), xCoord integer, yCoord integer, submitterIP inet);""")
 	dbCursor.execute("""CREATE INDEX ON hunts.sightings (datetime DESC);""")
 	
 	dbConn.commit()

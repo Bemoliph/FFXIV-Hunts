@@ -3,6 +3,7 @@ import datetime
 import jinja2
 import os.path
 import psycopg2, psycopg2.pool, psycopg2.extras
+import time
 
 def connect():
 	# TODO: move this stuff into a config somewhere
@@ -37,7 +38,7 @@ class HuntApi(object):
 		
 		seconds = targetData.get("time", None)
 		if seconds is not None:
-			targetData["time"] = datetime.datetime.fromtimestamp(seconds)
+			targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
 		
 		# Make sure we have all the data we need
 		requiredKeysAndTypes = [("targetID", int), ("xCoord", int), ("yCoord", int), ("isDead", bool), ("isNow", bool), ("time", datetime.datetime)]
@@ -76,23 +77,24 @@ class HuntApi(object):
 		dbConn = pool.getconn()
 		dbCursor = dbConn.cursor()
 		
-		if targetData["isDead"]:
-			# Get time since last killed report
-			dbCursor.execute("""SELECT age(datetime, %s) FROM hunts.sightings WHERE targetID = %s AND isDead ORDER BY age(datetime, %s) DESC LIMIT 1;""", (targetData["time"], targetData["targetID"], targetData["time"]))
-		else:
-			# Get time since last sighted report
-			dbCursor.execute("""SELECT age(datetime, %s) FROM hunts.sightings WHERE targetID = %s AND NOT isDead ORDER BY age(datetime, %s) DESC LIMIT 1;""", (targetData["time"], targetData["targetID"], targetData["time"]))
+		# Get time since last report
+		rowInputs = (targetData["time"], targetData["time"], targetData["targetID"], targetData["isDead"])
+		dbCursor.execute("""SELECT abs(extract(epoch from datetime) - extract(epoch from %s)) AS timedelta, extract(epoch from %s) as inputTime FROM hunts.sightings WHERE targetID = %s AND isDead = %s ORDER BY timedelta ASC LIMIT 5;""", rowInputs)
 		
-		nearestTimedelta = dbCursor.fetchone()
+		result = dbCursor.fetchone()
 		
 		dbCursor.close()
 		pool.putconn(dbConn)
 		
-		if nearestTimedelta is None:
+		if result is None:
 			# Target has never been reported before, not a duplicate report
 			return False
-		elif abs(nearestTimedelta[0]) < datetime.timedelta(minutes = 10):
-			# Consider it a duplicate if reported in the last 10 minutes
+		
+		# Consider it a duplicate if reported in the last 10 minutes
+		nearestDelta = datetime.timedelta(seconds = result[0])
+		minimumDelta = datetime.timedelta(minutes = 10)
+		
+		if nearestDelta < minimumDelta:
 			return True
 		else:
 			return False

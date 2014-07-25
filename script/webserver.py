@@ -12,7 +12,7 @@ if __name__ == "__main__":
 				},
 				
 				'/static': {
-					'tools.staticdir.dir':"/opt/hunts/static/",
+					'tools.staticdir.dir':"E:\\Users\\Bemoliph\\Desktop\\ffxiv-hunts\\ffxiv-hunts\\static",
 					'tools.staticdir.on': True,
 				}
 			}
