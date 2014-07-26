@@ -1,0 +1,8 @@
+[postgresql]
+user = changeme
+password = changeme
+host = 127.0.0.1
+database = ffxiv
+minpoolsize = 1
+maxpoolsize = 10
+

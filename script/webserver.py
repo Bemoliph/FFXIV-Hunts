@@ -1,19 +1,18 @@
 import cherrypy
+import psycopg2
 from huntserv import HuntServ
 
 root = HuntServ.HuntServ()
 root.api = HuntServ.HuntApi()
 
+def connect():
+	credentials = cherrypy.config.get("database")
+	print credentials
+	
+	pool = psycopg2.pool.ThreadedConnectionPool(1, 10, **credentials)
+	
+	return pool
+
 if __name__ == "__main__":
-	config = {
-				'global': {
-					'server.socket_host':'0.0.0.0',
-					'server.socket_port':80,
-				},
-				
-				'/static': {
-					'tools.staticdir.dir':"E:\\Users\\Bemoliph\\Desktop\\ffxiv-hunts\\ffxiv-hunts\\static",
-					'tools.staticdir.on': True,
-				}
-			}
-	cherrypy.quickstart(root, config=config)
+	cherrypy.quickstart(root, config="cherrypy.cfg")
+	pool = connect()

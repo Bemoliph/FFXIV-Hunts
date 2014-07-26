@@ -2,21 +2,10 @@ import cherrypy
 import datetime
 import jinja2
 import os.path
-import psycopg2, psycopg2.pool, psycopg2.extras
+import psycopg2.extras
 import time
 
-def connect():
-	# TODO: move this stuff into a config somewhere
-	user = "hunts"
-	password = "***REMOVED***"
-	host = "127.0.0.1"
-	database = "ffxiv"
-	
-	pool = psycopg2.pool.ThreadedConnectionPool(1, 10, user=user, password=password, host=host, database=database)
-	
-	return pool
-
-pool = connect()
+import HuntDB
 
 # Set up template environment
 env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
@@ -36,9 +25,12 @@ class HuntApi(object):
 		if password != "***REMOVED***":
 			return False
 		
-		seconds = targetData.get("time", None)
-		if seconds is not None:
-			targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
+		if targetData["isNow"]:
+			targetData["time"] = datetime.datetime.now()
+		else:
+			seconds = targetData.get("time", None)
+			if seconds is not None:
+				targetData["time"] = datetime.datetime.utcfromtimestamp(seconds)
 		
 		# Make sure we have all the data we need
 		# TODO: Find a more graceful way of including None and/or multiple types
@@ -64,14 +56,14 @@ class HuntApi(object):
 			return False
 		
 		# Make sure target exists
-		dbConn = pool.getconn()
+		dbConn = HuntDB.pool.getconn()
 		dbCursor = dbConn.cursor()
 		
 		dbCursor.execute("""SELECT count(1) FROM hunts.sightings WHERE hunts.sightings.targetID = %s;""", (targetData["targetID"],))
 		targetExists = dbCursor.fetchone()
 		
 		dbCursor.close()
-		pool.putconn(dbConn)
+		HuntDB.pool.putconn(dbConn)
 		
 		if not targetExists:
 			return False
@@ -79,7 +71,7 @@ class HuntApi(object):
 		return True
 	
 	def isDuplicateSighting(self, targetData):
-		dbConn = pool.getconn()
+		dbConn = HuntDB.pool.getconn()
 		dbCursor = dbConn.cursor()
 		
 		# Get time since last report
@@ -89,7 +81,7 @@ class HuntApi(object):
 		result = dbCursor.fetchone()
 		
 		dbCursor.close()
-		pool.putconn(dbConn)
+		HuntDB.pool.putconn(dbConn)
 		
 		if result is None:
 			# Target has never been reported before, not a duplicate report
@@ -105,7 +97,7 @@ class HuntApi(object):
 			return False
 	
 	def addSighting(self, targetData):
-		dbConn = pool.getconn()
+		dbConn = HuntDB.pool.getconn()
 		dbCursor = dbConn.cursor()
 		
 		#submitterIP = cherrypy.request.headers['HTTP_X_FORWARDED_FOR']
@@ -116,7 +108,7 @@ class HuntApi(object):
 		
 		dbConn.commit()
 		dbCursor.close()
-		pool.putconn(dbConn)
+		HuntDB.pool.putconn(dbConn)
 	
 	def crunchSightingStatistics(self, targetData):
 		# TODO: regenerate stats for reported monster
@@ -142,7 +134,7 @@ class HuntApi(object):
 	@cherrypy.expose
 	@cherrypy.tools.json_out()
 	def getTargets(self, **params):
-		dbConn = pool.getconn()
+		dbConn = HuntDB.pool.getconn()
 		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 		
 		# Get most recent monster sightings
@@ -150,14 +142,14 @@ class HuntApi(object):
 		targets = [dict(x) for x in dbCursor.fetchall()]
 		
 		dbCursor.close()
-		pool.putconn(dbConn)
+		HuntDB.pool.putconn(dbConn)
 		
 		return targets
 
 class HuntServ(object):
 	@cherrypy.expose
 	def index(self, **params):
-		dbConn = pool.getconn()
+		dbConn = HuntDB.pool.getconn()
 		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 		
 		# Get list of targets
@@ -165,7 +157,7 @@ class HuntServ(object):
 		targetList = [dict(x) for x in dbCursor.fetchall()]
 		
 		dbCursor.close()
-		pool.putconn(dbConn)
+		HuntDB.pool.putconn(dbConn)
 		
 		template = env.get_template("hunts.tmpl")
 		return template.render(title="FFXIV Hunt Tracker - Excalibur", targetList=targetList)
