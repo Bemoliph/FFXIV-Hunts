@@ -18,3 +18,17 @@ def createConnectionPool():
 	return pool
 
 pool = createConnectionPool()
+
+def getConnectionWithCursor(dictCursor=False):
+	dbConn = pool.getconn()
+	
+	if dictCursor:
+		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
+	else:
+		dbCursor = dbConn.cursor()
+	
+	return dbConn, dbCursor
+
+def putConnectionWithCursor(dbConn, dbCursor):
+	dbCursor.close()
+	pool.putconn(dbConn)

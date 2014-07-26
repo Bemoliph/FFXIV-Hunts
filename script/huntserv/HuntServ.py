@@ -56,14 +56,12 @@ class HuntApi(object):
 			return False
 		
 		# Make sure target exists
-		dbConn = HuntDB.pool.getconn()
-		dbCursor = dbConn.cursor()
+		dbConn, dbCursor = HuntDB.getConnectionWithCursor()
 		
 		dbCursor.execute("""SELECT count(1) FROM hunts.sightings WHERE hunts.sightings.targetID = %s;""", (targetData["targetID"],))
 		targetExists = dbCursor.fetchone()
 		
-		dbCursor.close()
-		HuntDB.pool.putconn(dbConn)
+		HuntDB.putConnectionWithCursor(dbConn, dbCursor)
 		
 		if not targetExists:
 			return False
@@ -71,17 +69,14 @@ class HuntApi(object):
 		return True
 	
 	def isDuplicateSighting(self, targetData):
-		dbConn = HuntDB.pool.getconn()
-		dbCursor = dbConn.cursor()
+		dbConn, dbCursor = HuntDB.getConnectionWithCursor()
 		
 		# Get time since last report
 		rowInputs = (targetData["time"], targetData["time"], targetData["targetID"], targetData["isDead"])
 		dbCursor.execute("""SELECT abs(extract(epoch from datetime) - extract(epoch from %s)) AS timedelta, extract(epoch from %s) as inputTime FROM hunts.sightings WHERE targetID = %s AND isDead = %s ORDER BY timedelta ASC LIMIT 5;""", rowInputs)
-		
 		result = dbCursor.fetchone()
 		
-		dbCursor.close()
-		HuntDB.pool.putconn(dbConn)
+		HuntDB.putConnectionWithCursor(dbConn, dbCursor)
 		
 		if result is None:
 			# Target has never been reported before, not a duplicate report
@@ -97,18 +92,15 @@ class HuntApi(object):
 			return False
 	
 	def addSighting(self, targetData):
-		dbConn = HuntDB.pool.getconn()
-		dbCursor = dbConn.cursor()
+		dbConn, dbCursor = HuntDB.getConnectionWithCursor()
 		
-		#submitterIP = cherrypy.request.headers['HTTP_X_FORWARDED_FOR']
 		submitterIP = cherrypy.request.remote.ip
 		
 		rowData = (targetData["time"], targetData["isDead"], targetData["targetID"], targetData["xCoord"], targetData["yCoord"], submitterIP)
 		dbCursor.execute("""INSERT INTO hunts.sightings VALUES (%s);""" % ", ".join(("%s",)*len(rowData)), rowData)
-		
 		dbConn.commit()
-		dbCursor.close()
-		HuntDB.pool.putconn(dbConn)
+		
+		HuntDB.putConnectionWithCursor(dbConn, dbCursor)
 	
 	def crunchSightingStatistics(self, targetData):
 		# TODO: regenerate stats for reported monster
@@ -134,30 +126,26 @@ class HuntApi(object):
 	@cherrypy.expose
 	@cherrypy.tools.json_out()
 	def getTargets(self, **params):
-		dbConn = HuntDB.pool.getconn()
-		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
+		dbConn, dbCursor = HuntDB.getConnectionWithCursor(dictCursor = True)
 		
 		# Get most recent monster sightings
 		dbCursor.execute("""SELECT DISTINCT ON (t.targetID) t.targetID, t.targetName, r.rankName, z.zoneName, extract(epoch from t.minSpawnTime) as minSpawnTime, extract(epoch from s.datetime) AS lastSeen, s.isDead FROM hunts.targets AS t JOIN hunts.ranks AS r ON t.rankID = r.rankID JOIN hunts.zones AS z ON t.zoneID = z.zoneID JOIN hunts.sightings AS s on t.targetID = s.targetID ORDER BY t.targetID, s.datetime DESC;""")
 		targets = [dict(x) for x in dbCursor.fetchall()]
 		
-		dbCursor.close()
-		HuntDB.pool.putconn(dbConn)
+		HuntDB.putConnectionWithCursor(dbConn, dbCursor)
 		
 		return targets
 
 class HuntServ(object):
 	@cherrypy.expose
 	def index(self, **params):
-		dbConn = HuntDB.pool.getconn()
-		dbCursor = dbConn.cursor(cursor_factory = psycopg2.extras.DictCursor)
+		dbConn, dbCursor = HuntDB.getConnectionWithCursor(dictCursor = True)
 		
 		# Get list of targets
 		dbCursor.execute("""SELECT t.targetID, t.targetName FROM hunts.targets AS t ORDER BY t.targetName ASC;""")
 		targetList = [dict(x) for x in dbCursor.fetchall()]
 		
-		dbCursor.close()
-		HuntDB.pool.putconn(dbConn)
+		HuntDB.putConnectionWithCursor(dbConn, dbCursor)
 		
 		template = env.get_template("hunts.tmpl")
 		return template.render(title="FFXIV Hunt Tracker - Excalibur", targetList=targetList)
