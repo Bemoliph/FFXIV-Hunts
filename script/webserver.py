@@ -1,9 +1,11 @@
 import cherrypy
 import psycopg2
-from huntserv import HuntServ
 
-root = HuntServ.HuntServ()
-root.api = HuntServ.HuntApi()
+from huntsite import huntsite
+from huntapi import huntapi
+
+root = huntsite.HuntSite()
+root.api = huntapi.HuntAPI()
 
 def connect():
 	credentials = cherrypy.config.get("database")

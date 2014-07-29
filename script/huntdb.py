@@ -17,8 +17,6 @@ def createConnectionPool():
 	
 	return pool
 
-pool = createConnectionPool()
-
 def getConnectionWithCursor(dictCursor=False):
 	dbConn = pool.getconn()
 	
@@ -32,3 +30,5 @@ def getConnectionWithCursor(dictCursor=False):
 def putConnectionWithCursor(dbConn, dbCursor):
 	dbCursor.close()
 	pool.putconn(dbConn)
+
+pool = createConnectionPool()
