@@ -100,7 +100,10 @@ class UpdateStatus(object):
 	@cherrypy.tools.json_in()
 	@cherrypy.tools.json_out()
 	def index(self, **params):
-		rawInputs = cherrypy.request.json
+		try:
+			rawInputs = cherrypy.request.json
+		except AttributeError:
+			return {"success": False, "message": "updateStatus only supports JSON via POST."}
 		
 		try:
 			targetStatus = self.getInputs(rawInputs)

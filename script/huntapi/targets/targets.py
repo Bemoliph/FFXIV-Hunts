@@ -5,7 +5,7 @@ from getTargets import GetTargets
 from getStatus import GetStatus
 from getSpawns import GetSpawns
 
-#from updateStatus import UpdateStatus
+from updateStatus import UpdateStatus
 
 class Targets(object):
 	@cherrypy.expose
@@ -18,4 +18,4 @@ class Targets(object):
 	getStatus = GetStatus()
 	getSpawns = GetSpawns()
 	
-	#updateStatus = UpdateStatus()
+	updateStatus = UpdateStatus()
