@@ -1,5 +1,6 @@
 import ConfigParser
 import psycopg2.pool
+import psycopg2.extras
 
 def createConnectionPool():
 	config = ConfigParser.ConfigParser()
