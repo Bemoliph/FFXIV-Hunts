@@ -2,6 +2,8 @@ import cherrypy
 import datetime
 import time
 
+import huntdb
+
 class UpdateStatus(object):
 	def getInputs(self, rawInput):
 		if type(rawInput) is not dict:
@@ -29,7 +31,7 @@ class UpdateStatus(object):
 		targetStatus["xCoord"] = rawInput.get("xCoord")
 		targetStatus["yCoord"] = rawInput.get("yCoord")
 		targetStatus["isDead"] = rawInput.get("isDead")
-		targetStatus["time"] = rawInput.get("time")
+		targetStatus["time"] = datetime.datetime.utcfromtimestamp(rawInput.get("time"))
 		
 		# Verify map coordinates are within valid constraints
 		minCoord = 0
@@ -61,12 +63,12 @@ class UpdateStatus(object):
 		
 		# Get time since last report
 		query = """
-			SELECT abs(extract(epoch from datetime) - extract(epoch from %s)) AS timedelta, extract(epoch from %s) as inputTime
+			SELECT abs(extract(epoch from datetime) - extract(epoch from %s)) AS timedelta
 			FROM hunts.sightings
 			WHERE targetID = %s AND isDead = %s
 			ORDER BY timedelta ASC
-			LIMIT 5;"""
-		queryInputs = (targetData["time"], targetData["time"], targetData["targetID"], targetData["isDead"])
+			LIMIT 1;"""
+		queryInputs = (targetData["time"], targetData["targetID"], targetData["isDead"])
 		dbCursor.execute(query, queryInputs)
 		result = dbCursor.fetchone()
 		
@@ -114,6 +116,5 @@ class UpdateStatus(object):
 			return {"success": False, "message": "Duplicate sighting."}
 		
 		self.addSighting(targetStatus)
-		self.crunchSightingStatistics(targetStatus)
 		
 		return {"success":True, "message":"Sighting added."}
