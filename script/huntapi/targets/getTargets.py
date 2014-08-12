@@ -12,7 +12,8 @@ class GetTargets(object):
 			SELECT t.targetID, t.targetName, r.rankName, z.zoneName, extract(epoch from t.minSpawnTime) as minSpawnTime
 			FROM hunts.targets AS t
 			JOIN hunts.ranks AS r ON r.rankID = t.rankID
-			JOIN hunts.zones AS z ON z.zoneID = t.zoneID;"""
+			JOIN hunts.zones AS z ON z.zoneID = t.zoneID
+			ORDER BY t.targetID ASC;"""
 		dbCursor.execute(query)
 		targets = [dict(x) for x in dbCursor.fetchall()]
 		

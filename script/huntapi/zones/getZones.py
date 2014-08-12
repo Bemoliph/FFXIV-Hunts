@@ -8,7 +8,7 @@ class GetZones(object):
 	def getZones(self):
 		dbConn, dbCursor = huntdb.getConnectionWithCursor(dictCursor = True)
 		
-		query = """SELECT zoneID, zoneName FROM hunts.zones;"""
+		query = """SELECT zoneID, zoneName FROM hunts.zones ORDER BY zoneID ASC;"""
 		dbCursor.execute(query)
 		zones = [dict(x) for x in dbCursor.fetchall()]
 		
