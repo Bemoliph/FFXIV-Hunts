@@ -30,7 +30,7 @@ def getDeltas(inputData):
 	for tID in inputData["targetIDs"]:
 		queryInput = (tID, inputData["maxRecords"])
 		dbCursor.execute(query, queryInput)
-		spawnDeltas[tID] = [x['spawndelta'] for x in dbCursor.fetchall()]
+		spawnDeltas[tID] = [x['spawndelta'] for x in dbCursor.fetchall() if x['spawndelta'] is not None]
 	
 	huntdb.putConnectionWithCursor(dbConn, dbCursor)
 	
