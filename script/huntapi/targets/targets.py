@@ -1,21 +1,22 @@
 import cherrypy
 
-from getHistory import GetHistory
-from getTargets import GetTargets
-from getStatus import GetStatus
-from getSpawns import GetSpawns
+import huntdocs
 
-from updateStatus import UpdateStatus
+import gettargets
+import getstatus
+import gethistory
+import getspawns
+
+import updatestatus
 
 class Targets(object):
+	getTargets = gettargets.renderPage
+	getStatus = getstatus.renderPage
+	getHistory = gethistory.renderPage
+	getSpawns = getspawns.renderPage
+	
+	updateStatus = updatestatus.renderPage
+	
 	@cherrypy.expose
 	def index(self, **params):
-		# TODO: API docs
-		return ""
-	
-	getHistory = GetHistory()
-	getTargets = GetTargets()
-	getStatus = GetStatus()
-	getSpawns = GetSpawns()
-	
-	updateStatus = UpdateStatus()
+		return huntdocs.generateApiDocs(huntdocs.getApiDocs(self))
