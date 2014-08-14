@@ -6,6 +6,7 @@ import gettargets
 import getstatus
 import gethistory
 import getspawns
+import getdeltas
 
 import updatestatus
 
@@ -14,6 +15,7 @@ class Targets(object):
 	getStatus = getstatus.renderPage
 	getHistory = gethistory.renderPage
 	getSpawns = getspawns.renderPage
+	getDeltas = getdeltas.renderPage
 	
 	updateStatus = updatestatus.renderPage
 	
