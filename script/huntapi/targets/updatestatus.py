@@ -11,7 +11,7 @@ def getInputs(rawInput):
 	
 	# TODO: Implement proper authentication, sessions and/or API keys
 	password = rawInput.get("password")
-	if password != "***REMOVED***":
+	if password != "placeholder":
 		raise ValueError("Invalid password.")
 	
 	if "time" not in rawInput:

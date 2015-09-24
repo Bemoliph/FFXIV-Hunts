@@ -4,7 +4,7 @@ import psycopg2
 if __name__ == "__main__":
 	# TODO: move this stuff into a config somewhere
 	user = "hunts"
-	password = "***REMOVED***"
+	password = "Usccj46N"
 	host = "127.0.0.1"
 	database = "ffxiv"
 	
